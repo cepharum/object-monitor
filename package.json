@@ -1,26 +1,34 @@
 {
-  "name": "object-monitor",
-  "version": "0.0.2",
-  "description": "monitoring change of object properties",
-  "main": "index.js",
-  "directories": {
-    "test": "test"
-  },
-  "scripts": {
-    "test": "set NODE_ENV=test && mocha --ui=tdd test/**/*.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cepharum/object-monitor.git"
-  },
-  "author": "Thomas Urban",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/cepharum/object-monitor/issues"
-  },
-  "homepage": "https://github.com/cepharum/object-monitor#readme",
-  "devDependencies": {
-    "mocha": "^5.0.0",
-    "should": "^13.2.1"
-  }
+	"name": "object-monitor",
+	"version": "0.0.3",
+	"description": "monitoring change of object properties",
+	"main": "index.js",
+	"directories": {
+		"test": "test"
+	},
+	"scripts": {
+		"test": "set NODE_ENV=test && mocha --ui=tdd test/**/*.js",
+		"style": "eslint lib/**/*.js test/**/*.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/cepharum/object-monitor.git"
+	},
+	"author": "Thomas Urban",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/cepharum/object-monitor/issues"
+	},
+	"homepage": "https://github.com/cepharum/object-monitor#readme",
+	"devDependencies": {
+		"eslint": "^4.16.0",
+		"eslint-config-cepharum": "^1.0.2",
+		"eslint-config-standard": "^11.0.0-beta.0",
+		"eslint-plugin-import": "^2.8.0",
+		"eslint-plugin-node": "^5.2.1",
+		"eslint-plugin-promise": "^3.6.0",
+		"eslint-plugin-standard": "^3.0.1",
+		"mocha": "^5.0.0",
+		"should": "^13.2.1"
+	}
 }
