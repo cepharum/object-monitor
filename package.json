@@ -1,0 +1,22 @@
+{
+  "name": "object-monitor",
+  "version": "0.0.1",
+  "description": "monitoring change of object properties",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "set NODE_ENV=test && mocha --ui=tdd test/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cepharum/object-monitor.git"
+  },
+  "author": "Thomas Urban",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cepharum/object-monitor/issues"
+  },
+  "homepage": "https://github.com/cepharum/object-monitor#readme"
+}
