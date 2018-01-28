@@ -1,4 +1,4 @@
-# object-monitor
+# object-monitor [![Build Status](https://travis-ci.org/cepharum/object-monitor.svg?branch=master)](https://travis-ci.org/cepharum/object-monitor)
 
 A NodeJS module for monitoring change of object properties.
 
