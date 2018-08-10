@@ -1,6 +1,6 @@
 {
 	"name": "object-monitor",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "monitoring change of object properties",
 	"main": "index.js",
 	"directories": {
