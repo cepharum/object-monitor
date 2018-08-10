@@ -56,7 +56,7 @@ suite( "Utility's Monitor", function() {
 
 		( () => Monitor( {} ) ).should.not.throw();
 		( () => Monitor( [] ) ).should.not.throw();
-		( () => Monitor( function() {} ) ).should.not.throw();
+		( () => Monitor( function() {} ) ).should.not.throw(); // eslint-disable-line no-empty-function
 		( () => Monitor( new Set() ) ).should.not.throw();
 	} );
 
@@ -70,7 +70,7 @@ suite( "Utility's Monitor", function() {
 		setup( function() {
 			data = {
 				someObject: { theObject: "set" },
-				someFunction: function() {},
+				someFunction: function() {}, // eslint-disable-line no-empty-function
 				someArray: [],
 				someSet: new Set(),
 				someInteger: 1000,
