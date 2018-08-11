@@ -28,18 +28,18 @@
 
 "use strict";
 
-const { suite, test } = require( "mocha" );
+const { describe, it, beforeEach } = require( "mocha" );
 const Should = require( "should" );
 
 const Monitor = require( "../" );
 
 
-suite( "Utility's Monitor", function() {
-	test( "is a function", function() {
+describe( "Utility's Monitor", function() {
+	it( "is a function", function() {
 		Should( Monitor ).be.Function().which.is.length( 1 );
 	} );
 
-	test( "requires object as first argument", function() {
+	it( "requires object as first argument", function() {
 		( () => Monitor() ).should.throw();
 		( () => Monitor( undefined ) ).should.throw();
 		( () => Monitor( null ) ).should.throw();
@@ -60,14 +60,14 @@ suite( "Utility's Monitor", function() {
 		( () => Monitor( new Set() ) ).should.not.throw();
 	} );
 
-	test( "accepts configuration object as second argument", function() {
+	it( "accepts configuration object as second argument", function() {
 		( () => Monitor( {}, {} ) ).should.not.throw();
 	} );
 
-	suite( "returns object", function() {
+	describe( "returns object which", function() {
 		let data;
 
-		setup( function() {
+		beforeEach( function() {
 			data = {
 				someObject: { theObject: "set" },
 				someFunction: function() {}, // eslint-disable-line no-empty-function
@@ -78,13 +78,13 @@ suite( "Utility's Monitor", function() {
 			};
 		} );
 
-		test( "IDENTICIAL to given one", function() {
+		it( "is IDENTICIAL to given one", function() {
 			const monitored = Monitor( data );
 
 			monitored.should.be.Object().and.equal( data );
 		} );
 
-		test( "exposing monitoring context as virtual property", function() {
+		it( "is exposing monitoring context as virtual property", function() {
 			const monitored = Monitor( data );
 
 			// it's a "virtual" property (thus can't be enumerated/tested)
@@ -101,7 +101,7 @@ suite( "Utility's Monitor", function() {
 			monitored.$context.should.have.property( "commit" ).which.is.a.Function().and.has.length( 0 );
 		} );
 
-		test( "NOT exposing monitoring context on properties with object-like values by default", function() {
+		it( "is NOT exposing monitoring context on properties with object-like values by default", function() {
 			const monitored = Monitor( data );
 
 			// it's a "virtual" property (thus can't be enumerated/tested)
@@ -120,7 +120,7 @@ suite( "Utility's Monitor", function() {
 			Should( monitored.someObject.$context ).be.Undefined();
 		} );
 
-		test( "exposing monitoring context on properties with object-like values on recursive monitoring", function() {
+		it( "is exposing monitoring context on properties with object-like values on recursive monitoring", function() {
 			const monitored = Monitor( data, { recursive: true } );
 
 			// it's a "virtual" property (thus can't be enumerated/tested)
@@ -140,14 +140,14 @@ suite( "Utility's Monitor", function() {
 			monitored.someObject.$context.should.have.property( "hasChanged" ).which.is.false();
 		} );
 
-		test( "sharing IDENTICAL monitoring context with properties of monitored object on recursive monitoring", function() {
+		it( "is sharing IDENTICAL monitoring context with properties of monitored object on recursive monitoring", function() {
 			const monitored = Monitor( data, { recursive: true } );
 
 			monitored.$context.should.equal( monitored.someObject.$context );
 		} );
 
-		suite( "with attached monitor", function() {
-			test( "tracking any shallow property added via monitored object in its monitoring context", function() {
+		describe( "has attached monitor that", function() {
+			it( "is tracking any shallow property added via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data );
 
 				monitored.$context.changed.should.be.empty();
@@ -161,7 +161,7 @@ suite( "Utility's Monitor", function() {
 				monitored.$context.hasChanged.should.be.true();
 			} );
 
-			test( "tracking any shallow property adjusted via monitored object in its monitoring context", function() {
+			it( "is tracking any shallow property adjusted via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data );
 
 				monitored.$context.changed.should.be.empty();
@@ -174,7 +174,7 @@ suite( "Utility's Monitor", function() {
 				monitored.$context.hasChanged.should.be.true();
 			} );
 
-			test( "NOT tracking any shallow property adjusted to same value via monitored object in its monitoring context", function() {
+			it( "is NOT tracking any shallow property adjusted to same value via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data );
 
 				monitored.$context.changed.should.be.empty();
@@ -187,7 +187,7 @@ suite( "Utility's Monitor", function() {
 			} );
 
 
-			test( "tracking any deep property added via monitored object in its monitoring context", function() {
+			it( "is tracking any deep property added via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
 
 				monitored.$context.changed.should.be.empty();
@@ -204,7 +204,7 @@ suite( "Utility's Monitor", function() {
 				monitored.$context.hasChanged.should.be.true();
 			} );
 
-			test( "tracking any deep property adjusted via monitored object in its monitoring context", function() {
+			it( "is tracking any deep property adjusted via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
 
 				monitored.$context.changed.should.be.empty();
@@ -219,7 +219,7 @@ suite( "Utility's Monitor", function() {
 				monitored.$context.hasChanged.should.be.true();
 			} );
 
-			test( "NOT tracking any deep property adjusted to same value via monitored object in its monitoring context", function() {
+			it( "is NOT tracking any deep property adjusted to same value via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
 
 				monitored.$context.changed.should.be.empty();
@@ -232,7 +232,7 @@ suite( "Utility's Monitor", function() {
 			} );
 
 
-			test( "tracking addition of items to array in a deep property via monitored object in its monitoring context", function() {
+			it( "is tracking addition of items to array in a deep property via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
 
 				monitored.$context.changed.should.be.empty();
@@ -251,7 +251,7 @@ suite( "Utility's Monitor", function() {
 				monitored.$context.hasChanged.should.be.true();
 			} );
 
-			test( "tracking removal of items from array in a deep property via monitored object in its monitoring context", function() {
+			it( "is tracking removal of items from array in a deep property via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
 
 				monitored.$context.changed.should.be.empty();
@@ -273,7 +273,7 @@ suite( "Utility's Monitor", function() {
 				monitored.$context.hasChanged.should.be.true();
 			} );
 
-			test( "tracking alternative removal of items from array in a deep property via monitored object in its monitoring context", function() {
+			it( "is tracking alternative removal of items from array in a deep property via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
 
 				monitored.$context.changed.should.be.empty();
@@ -296,8 +296,8 @@ suite( "Utility's Monitor", function() {
 			} );
 
 
-			suite( "supports rolling back change of monitored object", function() {
-				test( "replacing adjusted value of shallow property with original one", function() {
+			describe( "supports rolling back change of monitored object, thus it", function() {
+				it( "is replacing adjusted value of shallow property with original one", function() {
 					const monitored = Monitor( data, { warn: false, fail: false } );
 					const original = data.someObject;
 
@@ -328,7 +328,7 @@ suite( "Utility's Monitor", function() {
 					monitored.someObject.should.equal( original );
 				} );
 
-				test( "replacing adjusted value of deep property with original one", function() {
+				it( "is replacing adjusted value of deep property with original one", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 					const original = data.someObject.theObject;
 
@@ -360,7 +360,7 @@ suite( "Utility's Monitor", function() {
 				} );
 
 				// see https://github.com/google/google-api-nodejs-client/issues/375#issuecomment-76538779 on avoiding to use delete operator
-				test( "replacing added value of shallow property with `undefined`", function() {
+				it( "is replacing added value of shallow property with `undefined`", function() {
 					const monitored = Monitor( data, { warn: false, fail: false } );
 
 					monitored.$context.changed.should.be.empty();
@@ -396,7 +396,7 @@ suite( "Utility's Monitor", function() {
 				} );
 
 				// see https://github.com/google/google-api-nodejs-client/issues/375#issuecomment-76538779 on avoiding to use delete operator
-				test( "replacing added value of deep property with `undefined`", function() {
+				it( "is replacing added value of deep property with `undefined`", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 
 					monitored.$context.changed.should.be.empty();
@@ -431,7 +431,7 @@ suite( "Utility's Monitor", function() {
 					data.someObject.should.have.property( "newProperty" );
 				} );
 
-				test( "replacing adjusted values with original ones preferring more shallow property over deeper one changing shallow one first", function() {
+				it( "is replacing adjusted values with original ones preferring more shallow property over deeper one changing shallow one first", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 					const original = data.someObject;
 
@@ -461,7 +461,7 @@ suite( "Utility's Monitor", function() {
 					monitored.someObject.should.equal( original );
 				} );
 
-				test( "replacing adjusted values with original ones preferring more shallow property over deeper one changing deep one first", function() {
+				it( "is replacing adjusted values with original ones preferring more shallow property over deeper one changing deep one first", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 					const original = data.someObject;
 
@@ -491,7 +491,7 @@ suite( "Utility's Monitor", function() {
 					monitored.someObject.should.equal( original );
 				} );
 
-				test( "replacing added values with `undefined` preferring addition of more shallow property over deeper one", function() {
+				it( "is replacing added values with `undefined` preferring addition of more shallow property over deeper one", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 
 					monitored.$context.changed.should.be.empty();
@@ -517,14 +517,15 @@ suite( "Utility's Monitor", function() {
 
 					monitored.$context.changed.should.be.empty();
 					monitored.$context.hasChanged.should.be.false();
+
 					// NOTE: next tests assess difference from original state
 					monitored.should.have.property( "someAdded" );
 					data.should.have.property( "someAdded" );
 				} );
 			} );
 
-			suite( "supports committing change of monitored object", function() {
-				test( "keeping adjusted value of shallow property", function() {
+			describe( "supports committing change of monitored object and thus it", function() {
+				it( "is keeping adjusted value of shallow property", function() {
 					const monitored = Monitor( data, { warn: false, fail: false } );
 					const original = data.someObject;
 
@@ -555,7 +556,7 @@ suite( "Utility's Monitor", function() {
 					monitored.someObject.should.not.equal( original );
 				} );
 
-				test( "keeping adjusted value of deep property", function() {
+				it( "is keeping adjusted value of deep property", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 					const original = data.someObject.theObject;
 
@@ -586,7 +587,7 @@ suite( "Utility's Monitor", function() {
 					monitored.someObject.theObject.should.not.equal( original );
 				} );
 
-				test( "keeping added value of shallow property", function() {
+				it( "is keeping added value of shallow property", function() {
 					const monitored = Monitor( data, { warn: false, fail: false } );
 
 					monitored.$context.changed.should.be.empty();
@@ -620,7 +621,7 @@ suite( "Utility's Monitor", function() {
 					data.should.have.property( "someAdded" ).which.is.not.undefined();
 				} );
 
-				test( "keeping added value of deep property", function() {
+				it( "is keeping added value of deep property", function() {
 					const monitored = Monitor( data, { warn: false, fail: false, recursive: true } );
 
 					monitored.$context.changed.should.be.empty();
@@ -654,10 +655,167 @@ suite( "Utility's Monitor", function() {
 					data.someObject.should.have.property( "newProperty" ).which.is.not.undefined();
 				} );
 			} );
+
+			describe( "provides set of coercion handlers that", () => {
+				it( "may be omitted", () => {
+					Monitor( data );
+				} );
+
+				it( "can be provided", () => {
+					Monitor( data, { coercion: {} } );
+				} );
+
+				it( "is obeyed on containing function associated with path name of adjusted property", () => {
+					const monitored = Monitor( data, { coercion: {
+						someInteger: value => String( value ),
+					} } );
+
+					monitored.someInteger = 2000;
+
+					monitored.someInteger.should.be.a.String().and.equal( "2000" );
+				} );
+
+				it( "is NOT obeyed on re-assigning existing value of selected property", () => {
+					const monitored = Monitor( data, { coercion: {
+						someInteger: value => String( value ),
+					} } );
+
+					monitored.someInteger = 1000;
+
+					monitored.someInteger.should.be.a.Number().and.equal( 1000 );
+				} );
+
+				it( "is NOT obeyed on missing function exactly associated with path name of adjusted property", () => {
+					const monitored = Monitor( data, { coercion: {
+						someInteger: value => String( value ),
+					} } );
+
+					monitored.someDifferentInteger = 3000;
+
+					monitored.someDifferentInteger.should.be.a.Number().and.equal( 3000 );
+				} );
+
+				it( "must provide handler with full path name of adjusted property", () => {
+					const monitored = Monitor( data, { coercion: {
+						theObject: value => "simple: " + value,
+						"someObject.theObject": value => "full path: " + value,
+					}, recursive: true } );
+
+					monitored.theObject = "added";
+					monitored.someObject.theObject = "updated";
+
+					monitored.theObject.should.be.a.String().and.equal( "simple: added" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "full path: updated" );
+				} );
+
+				it( "is NOT obeyed on adjusting deep property w/ non-recursive monitor", () => {
+					const monitored = Monitor( data, { coercion: {
+						theObject: value => "simple: " + value,
+						"someObject.theObject": value => "full path: " + value,
+					}, recursive: false } );
+
+					monitored.theObject = "added";
+					monitored.someObject.theObject = "updated";
+
+					monitored.theObject.should.be.a.String().and.equal( "simple: added" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "updated" );
+				} );
+
+				it( "may use fallback handler matching last segment of adjusted property's path name, only", () => {
+					const monitored = Monitor( data, { coercion: {
+						theObject: value => "simple: " + value,
+						"someObject.theObject": value => "full path: " + value,
+						"*.theObject": value => "any level: " + value,
+					}, recursive: true } );
+
+					monitored.theObject = "added";
+					monitored.someObject.theObject = "updated";
+					monitored.anotherObject = {};
+					monitored.anotherObject.theObject = "added";
+					monitored.anotherObject.subObject = {};
+					monitored.anotherObject.subObject.theObject = "added";
+
+					monitored.theObject.should.be.a.String().and.equal( "simple: added" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "full path: updated" );
+					monitored.anotherObject.theObject.should.be.a.String().and.equal( "any level: added" );
+					monitored.anotherObject.subObject.theObject.should.be.a.String().and.equal( "any level: added" );
+				} );
+
+				it( "is NOT implicitly obeyed on assigning complex values containing properties to be coerced", () => {
+					const monitored = Monitor( data, { coercion: {
+						theObject: value => "simple: " + value,
+						"someObject.theObject": value => "full path: " + value,
+						"*.theObject": value => "any level: " + value,
+					}, recursive: true } );
+
+					monitored.theObject = "added";
+					monitored.someObject.theObject = "updated";
+					monitored.anotherObject = { theObject: "added" };
+					monitored.anotherObject.subObject = { theObject: "added" };
+
+					monitored.theObject.should.be.a.String().and.equal( "simple: added" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "full path: updated" );
+					monitored.anotherObject.theObject.should.be.a.String().and.equal( "added" );
+					monitored.anotherObject.subObject.theObject.should.be.a.String().and.equal( "added" );
+				} );
+
+				it( "may contain default handler to be obeyed if no handler is matching path name of adjusted property exactly", () => {
+					const monitored = Monitor( data, { coercion: {
+						someInteger: value => String( value ),
+						"*": value => "fallback: " + value,
+					} } );
+
+					monitored.someInteger.should.be.a.Number().and.equal( 1000 );
+					data.someInteger.should.be.a.Number().and.equal( 1000 );
+
+					monitored.someInteger = 2000;
+
+					monitored.someInteger.should.be.a.String().and.equal( "2000" );
+					data.someInteger.should.be.a.String().and.equal( "2000" );
+
+					monitored.someDifferentInteger = 3000;
+
+					monitored.someDifferentInteger.should.be.a.String().and.equal( "fallback: 3000" );
+					data.someDifferentInteger.should.be.a.String().and.equal( "fallback: 3000" );
+				} );
+
+				it( "may be adjusted to be obeyed afterwards", () => {
+					const coercion = {};
+					const monitored = Monitor( data, { warn: false, fail: false, coercion, recursive: true } );
+
+					monitored.theObject = "added";
+					monitored.someObject.theObject = "updated";
+					monitored.anotherObject = {};
+					monitored.anotherObject.theObject = "added";
+					monitored.anotherObject.subObject = {};
+					monitored.anotherObject.subObject.theObject = "added";
+
+					monitored.theObject.should.be.a.String().and.equal( "added" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "updated" );
+					monitored.anotherObject.theObject.should.be.a.String().and.equal( "added" );
+					monitored.anotherObject.subObject.theObject.should.be.a.String().and.equal( "added" );
+
+
+					coercion.theObject = value => "simple: " + value;
+					coercion["someObject.theObject"] = value => "full path: " + value;
+					coercion["*.theObject"] = value => "any level: " + value;
+
+
+					monitored.theObject = "updated";
+					monitored.someObject.theObject = "updated again";
+					monitored.anotherObject.theObject = "updated";
+					monitored.anotherObject.subObject.theObject = "updated";
+
+					monitored.theObject.should.be.a.String().and.equal( "simple: updated" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "full path: updated again" );
+					monitored.anotherObject.theObject.should.be.a.String().and.equal( "any level: updated" );
+					monitored.anotherObject.subObject.theObject.should.be.a.String().and.equal( "any level: updated" );
+				} );
+			} );
 		} );
 	} );
 
-	test( "monitors properties on explicit request for recursive monitoring, only", function() {
+	it( "monitors properties on explicit request for recursive monitoring, only", function() {
 		const shallow = Monitor( {
 			prop: {
 				sub: "original",
@@ -677,7 +835,7 @@ suite( "Utility's Monitor", function() {
 		Should.exist( deep.prop.$context );
 	} );
 
-	test( "fails on replacing some previously monitored change w/o committing first", function() {
+	it( "fails on replacing some previously monitored change w/o committing first", function() {
 		const monitor = Monitor( { prop: "original" }, { warn: false } );
 
 		( () => { monitor.prop = "changed"; } ).should.not.throw();
@@ -696,7 +854,7 @@ suite( "Utility's Monitor", function() {
 		monitor.prop.should.equal( "re-changed" );
 	} );
 
-	test( "does not fail on replacing some previously monitored change on clearing configuration property `fail`", function() {
+	it( "does not fail on replacing some previously monitored change on clearing configuration property `fail`", function() {
 		const monitor = Monitor( { prop: "original" }, { warn: false, fail: false } );
 
 		( () => { monitor.prop = "changed"; } ).should.not.throw();
@@ -715,7 +873,7 @@ suite( "Utility's Monitor", function() {
 		monitor.prop.should.equal( "changed once more" );
 	} );
 
-	test( "rejects to monitor retrieval of shallow property w/ period in name", function() {
+	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
 		const data = {
 			"prop-w/o-period": "original",
 			"prop.w/-period": "original",
@@ -727,7 +885,7 @@ suite( "Utility's Monitor", function() {
 		( () => data["prop.w/-period"] ).should.not.throw();
 	} );
 
-	test( "rejects to monitor adjustment of shallow property w/ period in name", function() {
+	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
 		const data = {
 			"prop-w/o-period": "original",
 			"prop.w/-period": "original",
@@ -739,7 +897,7 @@ suite( "Utility's Monitor", function() {
 		( () => { data["prop.w/-period"] = "changed"; } ).should.not.throw();
 	} );
 
-	test( "rejects to monitor retrieval of shallow property w/ period in name", function() {
+	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
 		const data = {
 			sub: {
 				"prop-w/o-period": "original",
@@ -753,7 +911,7 @@ suite( "Utility's Monitor", function() {
 		( () => data.sub["prop.w/-period"] ).should.not.throw();
 	} );
 
-	test( "rejects to monitor adjustment of shallow property w/ period in name", function() {
+	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
 		const data = {
 			sub: {
 				"prop-w/o-period": "original",
