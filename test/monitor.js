@@ -34,7 +34,7 @@ const Should = require( "should" );
 const Monitor = require( "../" );
 
 
-describe( "Utility's Monitor", function() {
+describe( "Object monitor", function() {
 	it( "is a function", function() {
 		Should( Monitor ).be.Function().which.is.length( 1 );
 	} );
@@ -723,9 +723,9 @@ describe( "Utility's Monitor", function() {
 
 				it( "may use fallback handler matching last segment of adjusted property's path name, only", () => {
 					const monitored = Monitor( data, { coercion: {
-						theObject: value => "simple: " + value,
-						"someObject.theObject": value => "full path: " + value,
-						"*.theObject": value => "any level: " + value,
+						theObject: ( value, label ) => "simple @" + label + ": " + value,
+						"someObject.theObject": ( value, label ) => "full path @" + label + ": " + value,
+						"*.theObject": ( value, label ) => "any level @" + label + ": " + value,
 					}, recursive: true } );
 
 					monitored.theObject = "added";
@@ -735,10 +735,10 @@ describe( "Utility's Monitor", function() {
 					monitored.anotherObject.subObject = {};
 					monitored.anotherObject.subObject.theObject = "added";
 
-					monitored.theObject.should.be.a.String().and.equal( "simple: added" );
-					monitored.someObject.theObject.should.be.a.String().and.equal( "full path: updated" );
-					monitored.anotherObject.theObject.should.be.a.String().and.equal( "any level: added" );
-					monitored.anotherObject.subObject.theObject.should.be.a.String().and.equal( "any level: added" );
+					monitored.theObject.should.be.a.String().and.equal( "simple @theObject: added" );
+					monitored.someObject.theObject.should.be.a.String().and.equal( "full path @someObject.theObject: updated" );
+					monitored.anotherObject.theObject.should.be.a.String().and.equal( "any level @anotherObject.theObject: added" );
+					monitored.anotherObject.subObject.theObject.should.be.a.String().and.equal( "any level @anotherObject.subObject.theObject: added" );
 				} );
 
 				it( "is NOT implicitly obeyed on assigning complex values containing properties to be coerced", () => {
@@ -762,21 +762,18 @@ describe( "Utility's Monitor", function() {
 				it( "may contain default handler to be obeyed if no handler is matching path name of adjusted property exactly", () => {
 					const monitored = Monitor( data, { coercion: {
 						someInteger: value => String( value ),
-						"*": value => "fallback: " + value,
+						"*": ( value, label ) => "fallback @" + label + ": " + value,
 					} } );
 
 					monitored.someInteger.should.be.a.Number().and.equal( 1000 );
-					data.someInteger.should.be.a.Number().and.equal( 1000 );
 
 					monitored.someInteger = 2000;
 
 					monitored.someInteger.should.be.a.String().and.equal( "2000" );
-					data.someInteger.should.be.a.String().and.equal( "2000" );
 
 					monitored.someDifferentInteger = 3000;
 
-					monitored.someDifferentInteger.should.be.a.String().and.equal( "fallback: 3000" );
-					data.someDifferentInteger.should.be.a.String().and.equal( "fallback: 3000" );
+					monitored.someDifferentInteger.should.be.a.String().and.equal( "fallback @someDifferentInteger: 3000" );
 				} );
 
 				it( "may be adjusted to be obeyed afterwards", () => {
