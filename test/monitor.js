@@ -930,4 +930,130 @@ describe( "Object monitor", function() {
 			monitored.$context = "someValue";
 		} ).should.throw();
 	} );
+
+
+	describe( "detects changing previously adjusted property and thus", () => {
+		it( "is logging error on console and is throwing exception by default", () => {
+			let invoked = false;
+			const oldHandler = console.error; // eslint-disable-line no-console
+			console.error = () => { // eslint-disable-line no-console
+				invoked = true;
+			};
+
+			const data = {};
+			const monitored = Monitor( data );
+
+			invoked.should.be.false();
+
+			monitored.property = "initialValue";
+
+			invoked.should.be.false();
+
+			( () => {
+				monitored.property = "newValue";
+			} ).should.throw();
+
+			invoked.should.be.true();
+
+			console.error = oldHandler; // eslint-disable-line no-console
+		} );
+
+		it( "is neither logging error on console nor is throwing exception when committing previous changes", () => {
+			let invoked = false;
+			const oldHandler = console.error; // eslint-disable-line no-console
+			console.error = () => { // eslint-disable-line no-console
+				invoked = true;
+			};
+
+			const data = {};
+			const monitored = Monitor( data );
+
+			invoked.should.be.false();
+
+			monitored.property = "initialValue";
+
+			invoked.should.be.false();
+
+			monitored.$context.commit();
+
+			( () => {
+				monitored.property = "newValue";
+			} ).should.not.throw();
+
+			invoked.should.be.false();
+
+			console.error = oldHandler; // eslint-disable-line no-console
+		} );
+
+		it( "is logging error on console w/ exception disabled in monitor's configuration", () => {
+			let invoked = false;
+			const oldHandler = console.error; // eslint-disable-line no-console
+			console.error = () => { // eslint-disable-line no-console
+				invoked = true;
+			};
+
+			const data = {};
+			const monitored = Monitor( data, { fail: false } );
+
+			invoked.should.be.false();
+
+			monitored.property = "initialValue";
+
+			invoked.should.be.false();
+
+			monitored.property = "newValue";
+
+			invoked.should.be.true();
+
+			console.error = oldHandler; // eslint-disable-line no-console
+		} );
+
+		it( "is throwing exception w/ warnings disabled in monitor's configuration", () => {
+			let invoked = false;
+			const oldHandler = console.error; // eslint-disable-line no-console
+			console.error = () => { // eslint-disable-line no-console
+				invoked = true;
+			};
+
+			const data = {};
+			const monitored = Monitor( data, { warn: false } );
+
+			invoked.should.be.false();
+
+			monitored.property = "initialValue";
+
+			invoked.should.be.false();
+
+			( () => {
+				monitored.property = "newValue";
+			} ).should.throw();
+
+			invoked.should.be.false();
+
+			console.error = oldHandler; // eslint-disable-line no-console
+		} );
+
+		it( "is neither logging error on console nor is throwing exception w/ warnings and exceptions disabled in monitor's configuration", () => {
+			let invoked = false;
+			const oldHandler = console.error; // eslint-disable-line no-console
+			console.error = () => { // eslint-disable-line no-console
+				invoked = true;
+			};
+
+			const data = {};
+			const monitored = Monitor( data, { warn: false, fail: false } );
+
+			invoked.should.be.false();
+
+			monitored.property = "initialValue";
+
+			invoked.should.be.false();
+
+			monitored.property = "newValue";
+
+			invoked.should.be.false();
+
+			console.error = oldHandler; // eslint-disable-line no-console
+		} );
+	} );
 } );
