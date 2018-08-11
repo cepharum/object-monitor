@@ -924,4 +924,13 @@ describe( "Utility's Monitor", function() {
 		( () => { monitor.sub["prop.w/-period"] = "changed"; } ).should.throw();
 		( () => { data.sub["prop.w/-period"] = "changed"; } ).should.not.throw();
 	} );
+
+	it( "rejects to adjust property `$context`", () => {
+		const data = {};
+		const monitored = Monitor( data );
+
+		( () => {
+			monitored.$context = "someValue";
+		} ).should.throw();
+	} );
 } );
