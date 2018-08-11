@@ -56,3 +56,47 @@ console.log( monitor.$context.hasChanged ); // -> false
 // changed property has been reverted
 console.log( monitor.someObject.subProperty ); // -> "its value"
 ```
+
+## Type Coercion
+
+In v0.0.7 support for implicit type/value coercion handlers has been added.
+
+```javascript
+const Monitor = require( "object-monitor" );
+
+let data = {
+    someObject: {
+        subProperty: "its value",
+        subObject: {},
+    },
+};
+
+// create monitor on some data object
+const monitor = Monitor( data, {
+	recursive: true,
+	coercion: {
+		someValue: ( value, label ) => `new value of ${label} is "${value}"`,
+		"someObject.subProperty": ( value, label ) => `deep change of ${label} to "${value}"`
+		"*.deepSub": ( value, label ) => `value of ${label} is now "${value}"`
+		"*": ( value, label ) => `fallback value of ${label} is now "${value}"`
+	},
+} );
+
+monitor.someValue = "added";
+monitor.someObject.subProperty = "new value";
+monitor.someObject.subObject.deepSub = "added";
+monitor.someObject.subObject.anotherSub = 1000;
+
+
+console.log( monitor.someValue );
+// new value of someValue is "added"
+
+console.log( monitor.someObject.subProperty );
+// deep change of someObject.subProperty to "new value"
+
+console.log( monitor.someObject.subObject.deepSub );
+// value of someObject.subObject.deepSub is now "added"
+
+console.log( monitor.someObject.subObject.anotherSub );
+// fallback value of someObject.subObject.anotherSub is now "1000"
+```
