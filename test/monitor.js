@@ -832,44 +832,6 @@ describe( "Object monitor", function() {
 		Should.exist( deep.prop.$context );
 	} );
 
-	it( "fails on replacing some previously monitored change w/o committing first", function() {
-		const monitor = Monitor( { prop: "original" }, { warn: false } );
-
-		( () => { monitor.prop = "changed"; } ).should.not.throw();
-		( () => { monitor.prop = "re-changed"; } ).should.throw();
-
-		monitor.prop.should.equal( "changed" );
-
-		( () => { monitor.prop = "re-changed"; } ).should.throw();
-
-		monitor.prop.should.equal( "changed" );
-
-		monitor.$context.commit();
-
-		( () => { monitor.prop = "re-changed"; } ).should.not.throw();
-
-		monitor.prop.should.equal( "re-changed" );
-	} );
-
-	it( "does not fail on replacing some previously monitored change on clearing configuration property `fail`", function() {
-		const monitor = Monitor( { prop: "original" }, { warn: false, fail: false } );
-
-		( () => { monitor.prop = "changed"; } ).should.not.throw();
-		( () => { monitor.prop = "re-changed"; } ).should.not.throw();
-
-		monitor.prop.should.equal( "re-changed" );
-
-		( () => { monitor.prop = "changed again"; } ).should.not.throw();
-
-		monitor.prop.should.equal( "changed again" );
-
-		monitor.$context.commit();
-
-		( () => { monitor.prop = "changed once more"; } ).should.not.throw();
-
-		monitor.prop.should.equal( "changed once more" );
-	} );
-
 	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
 		const data = {
 			"prop-w/o-period": "original",
@@ -932,47 +894,117 @@ describe( "Object monitor", function() {
 	} );
 
 
-	describe( "detects changing previously adjusted property and thus", () => {
-		it( "is logging error on console and is throwing exception by default", () => {
-			let invoked = false;
-			const oldHandler = console.error; // eslint-disable-line no-console
-			console.error = () => { // eslint-disable-line no-console
-				invoked = true;
-			};
 
+	describe( "detects changing previously adjusted property and thus", () => {
+		let hasLoggedSomething;
+		let oldHandler;
+
+		beforeEach( () => {
+			oldHandler = console.error; // eslint-disable-line no-console
+			console.error = () => { // eslint-disable-line no-console
+				hasLoggedSomething = true;
+			};
+			hasLoggedSomething = false;
+		} );
+
+		afterEach( () => {
+			console.error = oldHandler; // eslint-disable-line no-console
+		} );
+
+
+		it( "fails on replacing some previously monitored change w/o committing first", function() {
+			const monitor = Monitor( { prop: "original" } );
+
+			( () => { monitor.prop = "changed"; } ).should.not.throw();
+			( () => { monitor.prop = "re-changed"; } ).should.throw();
+
+			monitor.prop.should.equal( "changed" );
+
+			( () => { monitor.prop = "re-changed"; } ).should.throw();
+
+			monitor.prop.should.equal( "changed" );
+
+			monitor.$context.commit();
+
+			( () => { monitor.prop = "re-changed"; } ).should.not.throw();
+
+			monitor.prop.should.equal( "re-changed" );
+		} );
+
+		it( "does not fail on replacing some previously monitored change on clearing configuration property `fail`", function() {
+			const monitor = Monitor( { prop: "original" }, { fail: false } );
+
+			( () => { monitor.prop = "changed"; } ).should.not.throw();
+			( () => { monitor.prop = "re-changed"; } ).should.not.throw();
+
+			monitor.prop.should.equal( "re-changed" );
+
+			( () => { monitor.prop = "changed again"; } ).should.not.throw();
+
+			monitor.prop.should.equal( "changed again" );
+
+			monitor.$context.commit();
+
+			( () => { monitor.prop = "changed once more"; } ).should.not.throw();
+
+			monitor.prop.should.equal( "changed once more" );
+		} );
+
+		it( "does not fail on replacing some previously monitored change w/o committing first while _relaxing_", function() {
+			const monitor = Monitor( { prop: "original" } );
+
+			( () => { monitor.prop = "changed"; } ).should.not.throw();
+			( () => { monitor.prop = "re-changed"; } ).should.throw();
+
+			monitor.prop.should.equal( "changed" );
+
+			monitor.$context.relax();
+			monitor.$context.relaxed.should.be.true();
+
+			( () => { monitor.prop = "re-changed"; } ).should.not.throw();
+
+			monitor.prop.should.equal( "re-changed" );
+
+			monitor.$context.relax( false );
+			monitor.$context.relaxed.should.be.false();
+
+			( () => { monitor.prop = "re-re-changed"; } ).should.throw();
+
+			monitor.prop.should.equal( "re-changed" );
+
+			monitor.$context.commit();
+
+			( () => { monitor.prop = "re-re-changed"; } ).should.not.throw();
+
+			monitor.prop.should.equal( "re-re-changed" );
+		} );
+
+		it( "is logging error on console and is throwing exception by default", () => {
 			const data = {};
 			const monitored = Monitor( data );
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "initialValue";
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			( () => {
 				monitored.property = "newValue";
 			} ).should.throw();
 
-			invoked.should.be.true();
-
-			console.error = oldHandler; // eslint-disable-line no-console
+			hasLoggedSomething.should.be.true();
 		} );
 
 		it( "is neither logging error on console nor is throwing exception when committing previous changes", () => {
-			let invoked = false;
-			const oldHandler = console.error; // eslint-disable-line no-console
-			console.error = () => { // eslint-disable-line no-console
-				invoked = true;
-			};
-
 			const data = {};
 			const monitored = Monitor( data );
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "initialValue";
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.$context.commit();
 
@@ -980,80 +1012,54 @@ describe( "Object monitor", function() {
 				monitored.property = "newValue";
 			} ).should.not.throw();
 
-			invoked.should.be.false();
-
-			console.error = oldHandler; // eslint-disable-line no-console
+			hasLoggedSomething.should.be.false();
 		} );
 
 		it( "is logging error on console w/ exception disabled in monitor's configuration", () => {
-			let invoked = false;
-			const oldHandler = console.error; // eslint-disable-line no-console
-			console.error = () => { // eslint-disable-line no-console
-				invoked = true;
-			};
-
 			const data = {};
 			const monitored = Monitor( data, { fail: false } );
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "initialValue";
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "newValue";
 
-			invoked.should.be.true();
-
-			console.error = oldHandler; // eslint-disable-line no-console
+			hasLoggedSomething.should.be.true();
 		} );
 
 		it( "is throwing exception w/ warnings disabled in monitor's configuration", () => {
-			let invoked = false;
-			const oldHandler = console.error; // eslint-disable-line no-console
-			console.error = () => { // eslint-disable-line no-console
-				invoked = true;
-			};
-
 			const data = {};
 			const monitored = Monitor( data, { warn: false } );
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "initialValue";
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			( () => {
 				monitored.property = "newValue";
 			} ).should.throw();
 
-			invoked.should.be.false();
-
-			console.error = oldHandler; // eslint-disable-line no-console
+			hasLoggedSomething.should.be.false();
 		} );
 
 		it( "is neither logging error on console nor is throwing exception w/ warnings and exceptions disabled in monitor's configuration", () => {
-			let invoked = false;
-			const oldHandler = console.error; // eslint-disable-line no-console
-			console.error = () => { // eslint-disable-line no-console
-				invoked = true;
-			};
-
 			const data = {};
 			const monitored = Monitor( data, { warn: false, fail: false } );
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "initialValue";
 
-			invoked.should.be.false();
+			hasLoggedSomething.should.be.false();
 
 			monitored.property = "newValue";
 
-			invoked.should.be.false();
-
-			console.error = oldHandler; // eslint-disable-line no-console
+			hasLoggedSomething.should.be.false();
 		} );
 	} );
 } );
