@@ -951,32 +951,32 @@ describe( "Object monitor", function() {
 		} );
 
 		it( "does not fail on replacing some previously monitored change w/o committing first while _relaxing_", function() {
-			const monitor = Monitor( { prop: "original" } );
+			const monitor = Monitor( { prop: { sub: "original" } }, { recursive: true } );
 
-			( () => { monitor.prop = "changed"; } ).should.not.throw();
-			( () => { monitor.prop = "re-changed"; } ).should.throw();
+			( () => { monitor.prop.sub = "changed"; } ).should.not.throw();
+			( () => { monitor.prop.sub = "re-changed"; } ).should.throw();
 
-			monitor.prop.should.equal( "changed" );
+			monitor.prop.sub.should.equal( "changed" );
 
 			monitor.$context.relax();
 			monitor.$context.relaxed.should.be.true();
 
-			( () => { monitor.prop = "re-changed"; } ).should.not.throw();
+			( () => { monitor.prop.sub = "re-changed"; } ).should.not.throw();
 
-			monitor.prop.should.equal( "re-changed" );
+			monitor.prop.sub.should.equal( "re-changed" );
 
 			monitor.$context.relax( false );
 			monitor.$context.relaxed.should.be.false();
 
-			( () => { monitor.prop = "re-re-changed"; } ).should.throw();
+			( () => { monitor.prop.sub = "re-re-changed"; } ).should.throw();
 
-			monitor.prop.should.equal( "re-changed" );
+			monitor.prop.sub.should.equal( "re-changed" );
 
 			monitor.$context.commit();
 
-			( () => { monitor.prop = "re-re-changed"; } ).should.not.throw();
+			( () => { monitor.prop.sub = "re-re-changed"; } ).should.not.throw();
 
-			monitor.prop.should.equal( "re-re-changed" );
+			monitor.prop.sub.should.equal( "re-re-changed" );
 		} );
 
 		it( "is logging error on console and is throwing exception by default", () => {
@@ -1016,18 +1016,35 @@ describe( "Object monitor", function() {
 		} );
 
 		it( "is logging error on console w/ exception disabled in monitor's configuration", () => {
-			const data = {};
-			const monitored = Monitor( data, { fail: false } );
+			const data = { sub: {} };
+			const monitored = Monitor( data, { fail: false, recursive: true } );
 
 			hasLoggedSomething.should.be.false();
 
-			monitored.property = "initialValue";
+			monitored.sub.property = "initialValue";
 
 			hasLoggedSomething.should.be.false();
 
-			monitored.property = "newValue";
+			monitored.sub.property = "newValue";
 
 			hasLoggedSomething.should.be.true();
+		} );
+
+		it( "is not logging error on console w/ exception disabled in monitor's configuration while _relaxing_", () => {
+			const data = { sub: {} };
+			const monitored = Monitor( data, { fail: false, recursive: true } );
+
+			hasLoggedSomething.should.be.false();
+
+			monitored.sub.property = "initialValue";
+
+			hasLoggedSomething.should.be.false();
+
+			monitored.$context.relax();
+
+			monitored.sub.property = "newValue";
+
+			hasLoggedSomething.should.be.false();
 		} );
 
 		it( "is throwing exception w/ warnings disabled in monitor's configuration", () => {
