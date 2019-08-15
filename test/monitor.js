@@ -64,6 +64,87 @@ describe( "Object monitor", function() {
 		( () => Monitor( {}, {} ) ).should.not.throw();
 	} );
 
+	it( "monitors properties on explicit request for recursive monitoring, only", function() {
+		const shallow = Monitor( {
+			prop: {
+				sub: "original",
+			},
+		}, {} );
+
+		Should.exist( shallow.$context );
+		Should.not.exist( shallow.prop.$context );
+
+		const deep = Monitor( {
+			prop: {
+				sub: "original",
+			},
+		}, { recursive: true } );
+
+		Should.exist( deep.$context );
+		Should.exist( deep.prop.$context );
+	} );
+
+	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
+		const data = {
+			"prop-w/o-period": "original",
+			"prop.w/-period": "original",
+		};
+		const monitor = Monitor( data, { warn: false, fail: false } );
+
+		( () => monitor["prop-w/o-period"] ).should.not.throw();
+		( () => monitor["prop.w/-period"] ).should.throw();
+		( () => data["prop.w/-period"] ).should.not.throw();
+	} );
+
+	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
+		const data = {
+			"prop-w/o-period": "original",
+			"prop.w/-period": "original",
+		};
+		const monitor = Monitor( data, { warn: false, fail: false } );
+
+		( () => { monitor["prop-w/o-period"] = "changed"; } ).should.not.throw();
+		( () => { monitor["prop.w/-period"] = "changed"; } ).should.throw();
+		( () => { data["prop.w/-period"] = "changed"; } ).should.not.throw();
+	} );
+
+	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
+		const data = {
+			sub: {
+				"prop-w/o-period": "original",
+				"prop.w/-period": "original",
+			},
+		};
+		const monitor = Monitor( data, { warn: false, fail: false, recursive: true } );
+
+		( () => monitor.sub["prop-w/o-period"] ).should.not.throw();
+		( () => monitor.sub["prop.w/-period"] ).should.throw();
+		( () => data.sub["prop.w/-period"] ).should.not.throw();
+	} );
+
+	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
+		const data = {
+			sub: {
+				"prop-w/o-period": "original",
+				"prop.w/-period": "original",
+			},
+		};
+		const monitor = Monitor( data, { warn: false, fail: false, recursive: true } );
+
+		( () => { monitor.sub["prop-w/o-period"] = "changed"; } ).should.not.throw();
+		( () => { monitor.sub["prop.w/-period"] = "changed"; } ).should.throw();
+		( () => { data.sub["prop.w/-period"] = "changed"; } ).should.not.throw();
+	} );
+
+	it( "rejects to adjust property `$context`", () => {
+		const data = {};
+		const monitored = Monitor( data );
+
+		( () => {
+			monitored.$context = "someValue";
+		} ).should.throw();
+	} );
+
 	describe( "returns object which", function() {
 		let data;
 
@@ -812,89 +893,6 @@ describe( "Object monitor", function() {
 		} );
 	} );
 
-	it( "monitors properties on explicit request for recursive monitoring, only", function() {
-		const shallow = Monitor( {
-			prop: {
-				sub: "original",
-			},
-		}, {} );
-
-		Should.exist( shallow.$context );
-		Should.not.exist( shallow.prop.$context );
-
-		const deep = Monitor( {
-			prop: {
-				sub: "original",
-			},
-		}, { recursive: true } );
-
-		Should.exist( deep.$context );
-		Should.exist( deep.prop.$context );
-	} );
-
-	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
-		const data = {
-			"prop-w/o-period": "original",
-			"prop.w/-period": "original",
-		};
-		const monitor = Monitor( data, { warn: false, fail: false } );
-
-		( () => monitor["prop-w/o-period"] ).should.not.throw();
-		( () => monitor["prop.w/-period"] ).should.throw();
-		( () => data["prop.w/-period"] ).should.not.throw();
-	} );
-
-	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
-		const data = {
-			"prop-w/o-period": "original",
-			"prop.w/-period": "original",
-		};
-		const monitor = Monitor( data, { warn: false, fail: false } );
-
-		( () => { monitor["prop-w/o-period"] = "changed"; } ).should.not.throw();
-		( () => { monitor["prop.w/-period"] = "changed"; } ).should.throw();
-		( () => { data["prop.w/-period"] = "changed"; } ).should.not.throw();
-	} );
-
-	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
-		const data = {
-			sub: {
-				"prop-w/o-period": "original",
-				"prop.w/-period": "original",
-			},
-		};
-		const monitor = Monitor( data, { warn: false, fail: false, recursive: true } );
-
-		( () => monitor.sub["prop-w/o-period"] ).should.not.throw();
-		( () => monitor.sub["prop.w/-period"] ).should.throw();
-		( () => data.sub["prop.w/-period"] ).should.not.throw();
-	} );
-
-	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
-		const data = {
-			sub: {
-				"prop-w/o-period": "original",
-				"prop.w/-period": "original",
-			},
-		};
-		const monitor = Monitor( data, { warn: false, fail: false, recursive: true } );
-
-		( () => { monitor.sub["prop-w/o-period"] = "changed"; } ).should.not.throw();
-		( () => { monitor.sub["prop.w/-period"] = "changed"; } ).should.throw();
-		( () => { data.sub["prop.w/-period"] = "changed"; } ).should.not.throw();
-	} );
-
-	it( "rejects to adjust property `$context`", () => {
-		const data = {};
-		const monitored = Monitor( data );
-
-		( () => {
-			monitored.$context = "someValue";
-		} ).should.throw();
-	} );
-
-
-
 	describe( "detects changing previously adjusted property and thus", () => {
 		let hasLoggedSomething;
 		let oldHandler;
@@ -1077,6 +1075,108 @@ describe( "Object monitor", function() {
 			monitored.property = "newValue";
 
 			hasLoggedSomething.should.be.false();
+		} );
+	} );
+
+	describe( "provides method for cloning monitor instance which", () => {
+		it( "creates another monitored object", function() {
+			const data = { sub: { prop: "original" } };
+			const source = Monitor( data, { recursive: true } );
+			const clone = source.$context.clone();
+
+			( clone === source ).should.be.false();
+			clone.$context.should.be.ok();
+			clone.$context.commit.should.be.Function();
+			clone.$context.rollBack.should.be.Function();
+			clone.$context.clone.should.be.Function();
+			clone.$context.changed.should.be.instanceOf( Map );
+		} );
+
+		it( "creates deep clone of monitored object as well", function() {
+			const data = { sub: { prop: "original" } };
+			const source = Monitor( data, { recursive: true } );
+			const clone = source.$context.clone();
+
+			clone.sub.prop = "adjusted";
+
+			clone.sub.prop.should.be.equal( "adjusted" );
+			source.sub.prop.should.be.equal( "original" );
+		} );
+
+		it( "creates deep clone of monitored object including preceding changes", function() {
+			const data = { sub: { prop: "original" } };
+			const source = Monitor( data, { recursive: true } );
+
+			source.sub.prop = "adjusted";
+
+			const clone = source.$context.clone();
+
+			clone.sub.prop.should.be.equal( "adjusted" );
+			source.sub.prop.should.be.equal( "adjusted" );
+		} );
+
+		it( "includes cloning list of changed properties", function() {
+			const data = { sub: { prop: "original" } };
+			const source = Monitor( data, { recursive: true } );
+
+			source.sub.prop = "adjusted";
+
+			const clone = source.$context.clone();
+
+			clone.$context.hasChanged.should.be.true();
+			clone.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+		} );
+
+		it( "creates clone that can be rolled back independently of its source", function() {
+			const data = { sub: { prop: "original" } };
+			const source = Monitor( data, { recursive: true } );
+
+			source.sub.prop = "adjusted";
+
+			const clone = source.$context.clone();
+
+			source.$context.hasChanged.should.be.true();
+			source.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+			source.sub.prop.should.be.equal( "adjusted" );
+
+			clone.$context.hasChanged.should.be.true();
+			clone.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+			clone.sub.prop.should.be.equal( "adjusted" );
+
+			clone.$context.rollBack();
+
+			source.$context.hasChanged.should.be.true();
+			source.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+			source.sub.prop.should.be.equal( "adjusted" );
+
+			clone.$context.hasChanged.should.be.false();
+			clone.sub.prop.should.be.equal( "original" );
+		} );
+
+		it( "creates clone that can be committed independently of its source", function() {
+			const data = { sub: { prop: "original" } };
+			const source = Monitor( data, { recursive: true } );
+
+			source.sub.prop = "adjusted";
+
+			const clone = source.$context.clone();
+
+			source.$context.hasChanged.should.be.true();
+			source.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+			source.sub.prop.should.be.equal( "adjusted" );
+
+			clone.$context.hasChanged.should.be.true();
+			clone.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+			clone.sub.prop.should.be.equal( "adjusted" );
+
+			clone.$context.commit();
+
+			source.$context.hasChanged.should.be.true();
+			source.$context.changed.get( "sub.prop" ).should.be.equal( "original" );
+			source.sub.prop.should.be.equal( "adjusted" );
+
+			clone.$context.hasChanged.should.be.false();
+			clone.sub.prop.should.be.equal( "adjusted" );
 		} );
 	} );
 } );

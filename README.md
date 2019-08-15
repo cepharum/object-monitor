@@ -119,27 +119,74 @@ let data = {
 // create monitor on some data object
 const monitor = Monitor( data, { recursive: true } );
 
-console.log( monitor.someObject.subProperty ); // -> "its value";
+console.log( monitor.someObject.subProperty ); // -> "its value"
 
 // change once ...
 monitor.someObject.subProperty = "new value";
-console.log( monitor.someObject.subProperty ); // -> "new value";
+console.log( monitor.someObject.subProperty ); // -> "new value"
 
 // change again ...
 monitor.someObject.subProperty = "newer value"; // THROWS!
-console.log( monitor.someObject.subProperty ); // -> still "new value";
+console.log( monitor.someObject.subProperty ); // -> still "new value"
 
 // relax
 monitor.$context.relax();
 
 // try changing again ...
 monitor.someObject.subProperty = "newer value";
-console.log( monitor.someObject.subProperty ); // -> "newer value";
+console.log( monitor.someObject.subProperty ); // -> "newer value"
 
 // stop relaxing
 monitor.$context.relax( false );
 
 // change again ...
 monitor.someObject.subProperty = "newest value"; // THROWS!
-console.log( monitor.someObject.subProperty ); // -> still "newer value";
+console.log( monitor.someObject.subProperty ); // -> still "newer value"
+```
+
+## Cloning Monitor
+
+Starting with v0.8.0 you can create a clone of any monitored object resulting in a deep clone of monitored data which is observed by another monitor that's starting with the same list of existing changes.
+
+```javascript
+const Monitor = require( "object-monitor" );
+
+let data = {
+    someObject: {
+        subProperty: "its value",
+    },
+};
+
+// create monitor on some data object
+const monitor = Monitor( data, { recursive: true } );
+
+console.log( monitor.someObject.subProperty ); // -> "its value"
+
+// change once ...
+monitor.someObject.subProperty = "new value";
+console.log( monitor.someObject.subProperty ); // -> "new value"
+
+// create a clone
+const clone = monitor.$context.clone();
+
+console.log( clone.someObject.subProperty ); // -> "new value"
+console.log( clone.$context.hasChanged ); // -> true
+
+// commit the clone
+clone.$context.commit();
+
+console.log( clone.someObject.subProperty ); // -> "new value"
+console.log( clone.$context.hasChanged ); // -> false
+
+console.log( monitor.someObject.subProperty ); // -> "new value"
+console.log( monitor.$context.hasChanged ); // -> true
+
+// roll back the source
+monitor.$context.rollBack();
+
+console.log( clone.someObject.subProperty ); // -> "new value"
+console.log( clone.$context.hasChanged ); // -> false
+
+console.log( monitor.someObject.subProperty ); // -> "its value"
+console.log( monitor.$context.hasChanged ); // -> false
 ```
