@@ -76,8 +76,8 @@ const monitor = Monitor( data, {
 	recursive: true,
 	coercion: {
 		someValue: ( value, label ) => `new value of ${label} is "${value}"`,
-		"someObject.subProperty": ( value, label ) => `deep change of ${label} to "${value}"`
-		"*.deepSub": ( value, label ) => `value of ${label} is now "${value}"`
+		"someObject.subProperty": ( value, label ) => `deep change of ${label} to "${value}"`,
+		"*.deepSub": ( value, label ) => `value of ${label} is now "${value}"`,
 		"*": ( value, label ) => `fallback value of ${label} is now "${value}"`
 	},
 } );
@@ -99,4 +99,47 @@ console.log( monitor.someObject.subObject.deepSub );
 
 console.log( monitor.someObject.subObject.anotherSub );
 // fallback value of someObject.subObject.anotherSub is now "1000"
+```
+
+## Relax Monitoring
+
+By default an object monitor instance is throwing exception when trying to change a previously changed property of monitored object without saving first. Using constructor arguments it is possible to permanently prevent this detection or replace the exception with a warning message logged on stderr.
+
+Starting with v0.0.8 a new context method is available for disabling this detection temporarily, only.
+
+```javascript
+const Monitor = require( "object-monitor" );
+
+let data = {
+    someObject: {
+        subProperty: "its value",
+    },
+};
+
+// create monitor on some data object
+const monitor = Monitor( data, { recursive: true } );
+
+console.log( monitor.someObject.subProperty ); // -> "its value";
+
+// change once ...
+monitor.someObject.subProperty = "new value";
+console.log( monitor.someObject.subProperty ); // -> "new value";
+
+// change again ...
+monitor.someObject.subProperty = "newer value"; // THROWS!
+console.log( monitor.someObject.subProperty ); // -> still "new value";
+
+// relax
+monitor.$context.relax();
+
+// try changing again ...
+monitor.someObject.subProperty = "newer value";
+console.log( monitor.someObject.subProperty ); // -> "newer value";
+
+// stop relaxing
+monitor.$context.relax( false );
+
+// change again ...
+monitor.someObject.subProperty = "newest value"; // THROWS!
+console.log( monitor.someObject.subProperty ); // -> still "newer value";
 ```
