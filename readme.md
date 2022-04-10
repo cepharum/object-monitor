@@ -57,7 +57,7 @@ console.log( monitor.$context.hasChanged ); // -> false
 console.log( monitor.someObject.subProperty ); // -> "its value"
 ```
 
-## Type Coercion
+## Type coercion
 
 In v0.0.7 support for implicit type/value coercion handlers has been added.
 
@@ -101,7 +101,7 @@ console.log( monitor.someObject.subObject.anotherSub );
 // fallback value of someObject.subObject.anotherSub is now "1000"
 ```
 
-## Relax Monitoring
+## Relax monitoring
 
 By default an object monitor instance is throwing exception when trying to change a previously changed property of monitored object without saving first. Using constructor arguments it is possible to permanently prevent this detection or replace the exception with a warning message logged on stderr.
 
@@ -144,7 +144,7 @@ monitor.someObject.subProperty = "newest value"; // THROWS!
 console.log( monitor.someObject.subProperty ); // -> still "newer value"
 ```
 
-## Cloning Monitor
+## Cloning monitor
 
 Starting with v0.8.0 you can create a clone of any monitored object resulting in a deep clone of monitored data which is observed by another monitor that's starting with the same list of existing changes.
 
@@ -189,4 +189,82 @@ console.log( clone.$context.hasChanged ); // -> false
 
 console.log( monitor.someObject.subProperty ); // -> "its value"
 console.log( monitor.$context.hasChanged ); // -> false
+```
+
+## Custom comparison
+
+Starting in v0.1, a custom callback may be provided to inspect complex data in detail:
+
+```javascript
+const Monitor = require( "object-monitor" );
+
+const data = {
+    someObject: {
+        subProperty: Buffer.from( "12345" ),
+    },
+};
+
+const unmanaged = Monitor( data, {
+    recursive: true,
+} );
+
+const managed = Monitor( data, {
+    recursive: true,
+    customCompare: ( previous, assigned ) => previous.equals( assigned ),
+} );
+
+// deeply assigning w/o custom comparison works fine for scalar data and for 
+// assigning identical non-scalar data
+unmanaged.someObject.subProperty = data.someObject.subProperty;
+console.log( unmanaged.$context.hasChanged ); // -> false
+
+// deeply assigning w/o custom comparison may be tracked as change though inner
+// value hasn't changed actually
+unmanaged.someObject.subProperty = Buffer.from( "12345" );
+console.log( unmanaged.$context.hasChanged ); // -> true
+
+// deeply assigning w/ custom comparison is capable of managing those cases
+managed.someObject.subProperty = Buffer.from( "12345" );
+console.log( managed.$context.hasChanged ); // -> false
+```
+
+Some limitations apply:
+
+* Custom comparison callback is invoked after applying any coercion.
+* No custom comparison callback is invoked on providing identical value.
+* The same applies if coercion of a given value results in identical value.
+
+## Custom separator
+
+The object monitor is listing names of properties that have changed recently in its context. Due to recursively tracking properties of nested objects, those names represent hierarchical path names into the top-level set of data which is monitored. These names use `.` for separating levels of hierarchy by default. Thus, an exception is thrown whenever there is a property including `.` in its name.
+
+Starting with v0.1, the separator used can be replaced by another single character to enable use of `.` in property naming.
+
+```javascript
+const Monitor = require( "object-monitor" );
+
+const data = {
+    someObject: {
+        subProperty: Buffer.from( "12345" ),
+    },
+};
+
+const regular = Monitor( data, {
+    recursive: true,
+} );
+
+const adjusted = Monitor( data, {
+    recursive: true,
+    separator: "/",
+} );
+
+regular["some.Object"] = 1; // throws
+regular.someObject["sub.Property"] = 1; // throws
+regular["some/Object"] = 1; // does not throw
+regular.someObject["sub/Property"] = 1; // does not throw
+
+adjusted["some.Object"] = 1; // does not throw
+adjusted.someObject["sub.Property"] = 1; // does not throw
+adjusted["some/Object"] = 1; // throws
+adjusted.someObject["sub/Property"] = 1; // throws
 ```
