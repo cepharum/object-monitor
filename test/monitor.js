@@ -173,27 +173,27 @@ describe( "Object monitor", function() {
 		} ).should.throw();
 	} );
 
-	describe( "returns object which", function() {
+	describe( "returns proxy which", function() {
 		let data;
 
 		beforeEach( function() {
 			data = {
-				someObject: { theObject: "set" },
+				someObject: { theObject: "set", aNumber: 1000, deepList: ["foo"] },
 				someFunction: function() {}, // eslint-disable-line no-empty-function
-				someArray: [],
+				someArray: ["foo"],
 				someSet: new Set(),
 				someInteger: 1000,
 				someBoolean: false,
 			};
 		} );
 
-		it( "is equivalent to given one", function() {
+		it( "is equivalent to given object", function() {
 			const monitored = Monitor( data );
 
 			monitored.should.be.Object().and.equal( data );
 		} );
 
-		it( "is not identical to given one", function() {
+		it( "is not identical to given object", function() {
 			const monitored = Monitor( data );
 
 			( monitored === data ).should.be.false();
@@ -255,191 +255,537 @@ describe( "Object monitor", function() {
 			monitored.someObject.$context.should.have.property( "hasChanged" ).which.is.false();
 		} );
 
-		it( "is sharing IDENTICAL monitoring context with properties of monitored object on recursive monitoring", function() {
+		it( "is sharing its monitoring context with monitoring of monitored object's properties", function() {
 			const monitored = Monitor( data, { recursive: true } );
 
 			monitored.$context.should.equal( monitored.someObject.$context );
 		} );
 
 		describe( "has attached monitor that", function() {
-			it( "is tracking any shallow property added via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data );
+			describe( "observes shallow properties of original object and thus", () => {
+				it( "is NOT tracking change by adding shallow property via original object", function() {
+					const monitored = Monitor( data );
 
-				monitored.$context.changed.should.be.empty();
-				data.firstAdded = null;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.secondAdded = null;
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "firstAdded" ).should.be.false();
-				monitored.$context.changed.has( "secondAdded" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					data.added = null;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking change by adding shallow property of original object via monitor", function() {
+					const monitored = Monitor( data );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.added = null; // addition via monitor
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.changed.has( "added" ).should.be.true();
+					monitored.$context.hasChanged.should.be.true();
+
+					data.should.have.ownProperty( "added" );
+				} );
+
+				it( "is NOT tracking change by updating shallow property via original object", function() {
+					const monitored = Monitor( data );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					data.someInteger = 999;
+					data.someInteger = "1000";
+					data.someInteger = 1000;
+					data.someInteger = 1000;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking change by updating shallow property of original object via monitor", function() {
+					const monitored = Monitor( data );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					monitored.someInteger = 999;
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.changed.has( "someInteger" ).should.be.true();
+					monitored.$context.hasChanged.should.be.true();
+
+					data.someInteger.should.be.equal( 999 );
+				} );
+
+				it( "is NOT tracking change by updating shallow property via monitor using same value", function() {
+					const monitored = Monitor( data );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					monitored.someInteger = 1000;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking change by updating shallow property via monitor using equivalent value", function() {
+					const monitored = Monitor( data );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					monitored.someInteger = "1000"; // change via monitor
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.changed.has( "someInteger" ).should.be.true();
+					monitored.$context.hasChanged.should.be.true();
+
+					data.someInteger.should.be.equal( "1000" );
+				} );
+
+				it( "is NOT tracking change by updating shallow property via monitor using equivalent value coerced to same value", function() {
+					const monitored = Monitor( data, {
+						coercion: {
+							someInteger: v => parseInt( v ),
+						},
+					} );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					monitored.someInteger = "1000"; // no actual change via monitor due to coercion
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					data.someInteger.should.be.equal( 1000 );
+				} );
+
+				it( "is tracking change by updating shallow property via monitor on custom comparison callback indicating different value", function() {
+					const monitored = Monitor( data, {
+						customCompare: ( before, now ) => Math.abs( before - now ) < 10,
+					} );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					monitored.someInteger = 1001;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someInteger = 990;
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+				} );
+
+				it( "is NOT tracking change by updating shallow property via monitor with custom comparison callback which is not invoked due to values being identical", function() {
+					const monitored = Monitor( data, {
+						customCompare: () => false, // force values to be considered different if custom callback is invoked
+					} );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someInteger.should.be.equal( 1000 );
+
+					monitored.someInteger = 1000;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
 			} );
 
-			it( "is tracking any shallow property adjusted via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data );
+			describe( "optionally observes deep properties of original object and thus", () => {
+				it( "is NOT tracking change by adding deep property via original object", function() {
+					const monitored = Monitor( data, { recursive: true } );
 
-				monitored.$context.changed.should.be.empty();
-				data.someInteger = 999;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someInteger = 998;
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "someInteger" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					data.someObject.added = null;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking change by adding deep property of original object via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.added = null; // addition via monitor
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.changed.has( "someObject.added" ).should.be.true();
+					monitored.$context.hasChanged.should.be.true();
+					monitored.someObject.$context.changed.should.not.be.empty();
+					monitored.someObject.$context.changed.has( "someObject.added" ).should.be.true();
+					monitored.someObject.$context.hasChanged.should.be.true();
+
+					data.someObject.should.have.ownProperty( "added" );
+				} );
+
+				it( "is NOT tracking change by updating deep property via original object", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					data.someObject.aNumber = 999;
+					data.someObject.aNumber = "1000";
+					data.someObject.aNumber = 1000;
+					data.someObject.aNumber = 1000;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking change by updating deep property of original object via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					monitored.someObject.aNumber = 999;
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.changed.has( "someObject.aNumber" ).should.be.true();
+					monitored.$context.hasChanged.should.be.true();
+					monitored.someObject.$context.changed.should.not.be.empty();
+					monitored.someObject.$context.changed.has( "someObject.aNumber" ).should.be.true();
+					monitored.someObject.$context.hasChanged.should.be.true();
+
+					data.someObject.aNumber.should.be.equal( 999 );
+				} );
+
+				it( "is NOT tracking change by updating deep property via monitor using same value", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					monitored.someObject.aNumber = 1000;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking change by updating deep property via monitor using equivalent value", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					monitored.someObject.aNumber = "1000"; // change via monitor
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.changed.has( "someObject.aNumber" ).should.be.true();
+					monitored.$context.hasChanged.should.be.true();
+					monitored.someObject.$context.changed.should.not.be.empty();
+					monitored.someObject.$context.changed.has( "someObject.aNumber" ).should.be.true();
+					monitored.someObject.$context.hasChanged.should.be.true();
+
+					data.someObject.aNumber.should.be.equal( "1000" );
+				} );
+
+				it( "is NOT tracking change by updating deep property via monitor using equivalent value coerced to same value", function() {
+					const monitored = Monitor( data, {
+						recursive: true,
+						coercion: {
+							"someObject.aNumber": v => parseInt( v ),
+						},
+					} );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					monitored.someObject.aNumber = "1000"; // no actual change via monitor due to coercion
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					data.someObject.aNumber.should.be.equal( 1000 );
+				} );
+
+				it( "is tracking change by updating deep property via monitor on custom comparison callback indicating different value", function() {
+					const monitored = Monitor( data, {
+						recursive: true,
+						customCompare: ( before, now ) => Math.abs( before - now ) < 10,
+					} );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					monitored.someObject.aNumber = 1001;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.aNumber = 990;
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					monitored.someObject.$context.changed.should.not.be.empty();
+					monitored.someObject.$context.changed.has( "someObject.aNumber" ).should.be.true();
+					monitored.someObject.$context.hasChanged.should.be.true();
+				} );
+
+				it( "is NOT tracking change by updating deep property via monitor with custom comparison callback which is not invoked due to values being identical", function() {
+					const monitored = Monitor( data, {
+						recursive: true,
+						customCompare: () => false, // force values to be considered different if custom callback is invoked
+					} );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+					data.someObject.aNumber.should.be.equal( 1000 );
+
+					monitored.someObject.aNumber = 1000;
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
 			} );
 
-			it( "is NOT tracking any shallow property adjusted to same value via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data );
+			describe( "observes arrays in shallow properties and thus", () => {
+				it( "is NOT tracking addition or removal of items to/from such an array via original object", function() {
+					const monitored = Monitor( data, { recursive: true } );
 
-				monitored.$context.changed.should.be.empty();
-				data.someInteger = 1000;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someInteger = 1000;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					data.someArray.push( "foo" );
+					data.someArray.pop( "foo" );
+					data.someArray.unshift( "foo" );
+					data.someArray.shift( "foo" );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking addition of items to such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray.push( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someArray.1"] );
+
+					monitored.someArray.unshift( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( [ "someArray.1", "someArray.2" ] );
+				} );
+
+				it( "is tracking removal of items from such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					data.someArray.push( "foo" );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray.pop( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someArray.length"] );
+
+					monitored.someArray.shift( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someArray.length"] );
+				} );
+
+				it( "is tracking alternative removal of items from such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray.pop( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someArray.length"] );
+				} );
+
+				it( "is tracking change by updating item of such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray[0] = "bar";
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someArray.0"] );
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor using same value", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray[0] = "foo";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor when using different value coerced to same value", function() {
+					const monitored = Monitor( data, { recursive: true, coercion: { "someArray.0": v => v.toLowerCase() } } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray[0] = "FOO";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor using value considered identical by custom comparison callback", function() {
+					const monitored = Monitor( data, { recursive: true, customCompare: () => true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray[0] = "different-from-foo";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor using same value ignoring custom comparison callback claiming them to be different", function() {
+					const monitored = Monitor( data, { recursive: true, customCompare: () => false } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someArray[0] = "foo";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
 			} );
 
-			it( "is using custom comparison callback on detecting change of shallow property", function() {
-				const monitored = Monitor( data, { customCompare: ( a, b ) => a === -b } );
+			describe( "observes arrays in deep properties and thus", () => {
+				it( "is NOT tracking addition or removal of items to/from such an array via original object", function() {
+					const monitored = Monitor( data, { recursive: true } );
 
-				monitored.$context.changed.should.be.empty();
-				data.someInteger = 1000;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someInteger = -1000;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someInteger = 1000;
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.hasChanged.should.be.true();
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					data.someObject.deepList.push( "foo" );
+					data.someObject.deepList.pop( "foo" );
+					data.someObject.deepList.unshift( "foo" );
+					data.someObject.deepList.shift( "foo" );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is tracking addition of items to such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList.push( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someObject.deepList.1"] );
+
+					monitored.someObject.deepList.unshift( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( [ "someObject.deepList.1", "someObject.deepList.2" ] );
+				} );
+
+				it( "is tracking removal of items from such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					data.someObject.deepList.push( "foo" );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList.pop( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someObject.deepList.length"] );
+
+					monitored.someObject.deepList.shift( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someObject.deepList.length"] );
+				} );
+
+				it( "is tracking alternative removal of items from such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList.pop( "foo" );
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someObject.deepList.length"] );
+				} );
+
+				it( "is tracking change by updating item of such an array via monitor", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList[0] = "bar";
+					monitored.$context.changed.should.not.be.empty();
+					monitored.$context.hasChanged.should.be.true();
+					[...monitored.$context.changed.keys()].should.be.deepEqual( ["someObject.deepList.0"] );
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor using same value", function() {
+					const monitored = Monitor( data, { recursive: true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList[0] = "foo";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor when using different value coerced to same value", function() {
+					const monitored = Monitor( data, { recursive: true, coercion: { "someObject.deepList.0": v => v.toLowerCase() } } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList[0] = "FOO";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor using value considered identical by custom comparison callback", function() {
+					const monitored = Monitor( data, { recursive: true, customCompare: () => true } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList[0] = "different-from-foo";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
+
+				it( "is NOT tracking change by updating item of such an array via monitor using same value ignoring custom comparison callback claiming them to be different", function() {
+					const monitored = Monitor( data, { recursive: true, customCompare: () => false } );
+
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+
+					monitored.someObject.deepList[0] = "foo";
+					monitored.$context.changed.should.be.empty();
+					monitored.$context.hasChanged.should.be.false();
+				} );
 			} );
-
-
-			it( "is tracking any deep property added via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data, { recursive: true } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someObject.firstAdded = null;
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someObject.secondAdded = null;
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "someObject" ).should.be.false();
-				monitored.$context.changed.has( "firstAdded" ).should.be.false();
-				monitored.$context.changed.has( "secondAdded" ).should.be.false();
-				monitored.$context.changed.has( "someObject.firstAdded" ).should.be.false();
-				monitored.$context.changed.has( "someObject.secondAdded" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
-			} );
-
-			it( "is tracking any deep property adjusted via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data, { recursive: true } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someObject.theObject = "changed";
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someObject.theObject = "re-changed";
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "someObject" ).should.be.false();
-				monitored.$context.changed.has( "theObject" ).should.be.false();
-				monitored.$context.changed.has( "someObject.theObject" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
-			} );
-
-			it( "is NOT tracking any deep property adjusted to same value via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data, { recursive: true } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someObject.theObject = "set";
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someObject.theObject = "set";
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-			} );
-
-			it( "is using custom comparison callback on detecting change of deep property", function() {
-				const monitored = Monitor( data, { recursive: true, customCompare: ( previous, current ) => current === previous + previous } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someObject.theObject = "set";
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someObject.theObject = "setset";
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someObject.theObject = "set";
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.hasChanged.should.be.true();
-			} );
-
-
-			it( "is tracking addition of items to array in a deep property via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data, { recursive: true } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someArray.push( "foo" );
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someArray.push( "foo" );
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "someArray" ).should.be.false();
-				monitored.$context.changed.has( "foo" ).should.be.false();
-				monitored.$context.changed.has( "0" ).should.be.false();
-				monitored.$context.changed.has( "1" ).should.be.false();
-				monitored.$context.changed.has( "someArray.foo" ).should.be.false();
-				monitored.$context.changed.has( "someArray.0" ).should.be.false();
-				monitored.$context.changed.has( "someArray.1" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
-			} );
-
-			it( "is tracking removal of items from array in a deep property via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data, { recursive: true } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someArray.push( "foo" );
-				data.someArray.push( "foo" );
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someArray.shift( "foo" );
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "someArray" ).should.be.false();
-				monitored.$context.changed.has( "foo" ).should.be.false();
-				monitored.$context.changed.has( "1" ).should.be.false();
-				monitored.$context.changed.has( "0" ).should.be.false();
-				monitored.$context.changed.has( "length" ).should.be.false();
-				monitored.$context.changed.has( "someArray.foo" ).should.be.false();
-				monitored.$context.changed.has( "someArray.1" ).should.be.false();
-				monitored.$context.changed.has( "someArray.0" ).should.be.false();
-				monitored.$context.changed.has( "someArray.length" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
-			} );
-
-			it( "is tracking alternative removal of items from array in a deep property via monitored object in its monitoring context", function() {
-				const monitored = Monitor( data, { recursive: true } );
-
-				monitored.$context.changed.should.be.empty();
-				data.someArray.push( "foo" );
-				data.someArray.push( "foo" );
-				monitored.$context.changed.should.be.empty();
-				monitored.$context.hasChanged.should.be.false();
-				monitored.someArray.pop( "foo" );
-				monitored.$context.changed.should.not.be.empty();
-				monitored.$context.changed.has( "someArray" ).should.be.false();
-				monitored.$context.changed.has( "foo" ).should.be.false();
-				monitored.$context.changed.has( "1" ).should.be.false();
-				monitored.$context.changed.has( "0" ).should.be.false();
-				monitored.$context.changed.has( "length" ).should.be.false();
-				monitored.$context.changed.has( "someArray.foo" ).should.be.false();
-				monitored.$context.changed.has( "someArray.1" ).should.be.false();
-				monitored.$context.changed.has( "someArray.0" ).should.be.false();
-				monitored.$context.changed.has( "someArray.length" ).should.be.true();
-				monitored.$context.hasChanged.should.be.true();
-			} );
-
 
 			describe( "supports rolling back change of monitored object, thus it", function() {
 				it( "is replacing adjusted value of shallow property with original one", function() {
@@ -1158,7 +1504,7 @@ describe( "Object monitor", function() {
 		} );
 	} );
 
-	describe( "provides method for cloning monitor instance which", () => {
+	describe( "provides clone() method for cloning monitor instance which", () => {
 		it( "creates another monitored object", function() {
 			const data = { sub: { prop: "original" } };
 			const source = Monitor( data, { recursive: true } );
@@ -1260,7 +1606,7 @@ describe( "Object monitor", function() {
 		} );
 	} );
 
-	describe( "includes clone function which", () => {
+	describe( "statically exposes its clone function which", () => {
 		it( "clones objects recursively by default", () => {
 			const a = { name: "foo", extra: { age: 5 } };
 			const b = Monitor.createClone( a );
