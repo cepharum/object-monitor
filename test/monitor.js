@@ -1,6 +1,6 @@
 "use strict";
 
-const { describe, it, beforeEach } = require( "mocha" );
+const { describe, it, beforeEach, afterEach } = require( "mocha" );
 const Should = require( "should" );
 
 const Monitor = require( "../" );
@@ -80,7 +80,7 @@ describe( "Object monitor", function() {
 		( () => { data["prop.w/-period"] = "changed"; } ).should.not.throw();
 	} );
 
-	it( "rejects to monitor retrieval of shallow property w/ period in name", function() {
+	it( "rejects to monitor retrieval of deep property w/ period in name", function() {
 		const data = {
 			sub: {
 				"prop-w/o-period": "original",
@@ -94,7 +94,7 @@ describe( "Object monitor", function() {
 		( () => data.sub["prop.w/-period"] ).should.not.throw();
 	} );
 
-	it( "rejects to monitor adjustment of shallow property w/ period in name", function() {
+	it( "rejects to monitor adjustment of deep property w/ period in name", function() {
 		const data = {
 			sub: {
 				"prop-w/o-period": "original",
@@ -105,6 +105,62 @@ describe( "Object monitor", function() {
 
 		( () => { monitor.sub["prop-w/o-period"] = "changed"; } ).should.not.throw();
 		( () => { monitor.sub["prop.w/-period"] = "changed"; } ).should.throw();
+		( () => { data.sub["prop.w/-period"] = "changed"; } ).should.not.throw();
+	} );
+
+	it( "accepts to monitor retrieval of shallow property w/ period in name on declaring custom separator", function() {
+		const data = {
+			"prop-w/o-period": "original",
+			"prop.w/-period": "original",
+		};
+		const monitor = Monitor( data, { warn: false, fail: false, separator: "|" } );
+
+		( () => monitor["prop-w/o-period"] ).should.not.throw();
+		( () => monitor["prop.w/-period"] ).should.not.throw();
+		( () => monitor["prop|w/-period"] ).should.throw();
+		( () => data["prop.w/-period"] ).should.not.throw();
+	} );
+
+	it( "accepts to monitor adjustment of shallow property w/ period in name on declaring custom separator", function() {
+		const data = {
+			"prop-w/o-period": "original",
+			"prop.w/-period": "original",
+		};
+		const monitor = Monitor( data, { warn: false, fail: false, separator: "|" } );
+
+		( () => { monitor["prop-w/o-period"] = "changed"; } ).should.not.throw();
+		( () => { monitor["prop.w/-period"] = "changed"; } ).should.not.throw();
+		( () => { monitor["prop|w/-period"] = "changed"; } ).should.throw();
+		( () => { data["prop.w/-period"] = "changed"; } ).should.not.throw();
+	} );
+
+	it( "accepts to monitor retrieval of deep property w/ period in name on declaring custom separator", function() {
+		const data = {
+			sub: {
+				"prop-w/o-period": "original",
+				"prop.w/-period": "original",
+			},
+		};
+		const monitor = Monitor( data, { warn: false, fail: false, recursive: true, separator: "|" } );
+
+		( () => monitor.sub["prop-w/o-period"] ).should.not.throw();
+		( () => monitor.sub["prop.w/-period"] ).should.not.throw();
+		( () => monitor.sub["prop|w/-period"] ).should.throw();
+		( () => data.sub["prop.w/-period"] ).should.not.throw();
+	} );
+
+	it( "accepts to monitor adjustment of deep property w/ period in name on declaring custom separator", function() {
+		const data = {
+			sub: {
+				"prop-w/o-period": "original",
+				"prop.w/-period": "original",
+			},
+		};
+		const monitor = Monitor( data, { warn: false, fail: false, recursive: true, separator: "|" } );
+
+		( () => { monitor.sub["prop-w/o-period"] = "changed"; } ).should.not.throw();
+		( () => { monitor.sub["prop.w/-period"] = "changed"; } ).should.not.throw();
+		( () => { monitor.sub["prop|w/-period"] = "changed"; } ).should.throw();
 		( () => { data.sub["prop.w/-period"] = "changed"; } ).should.not.throw();
 	} );
 
@@ -131,10 +187,16 @@ describe( "Object monitor", function() {
 			};
 		} );
 
-		it( "is IDENTICIAL to given one", function() {
+		it( "is equivalent to given one", function() {
 			const monitored = Monitor( data );
 
 			monitored.should.be.Object().and.equal( data );
+		} );
+
+		it( "is not identical to given one", function() {
+			const monitored = Monitor( data );
+
+			( monitored === data ).should.be.false();
 		} );
 
 		it( "is exposing monitoring context as virtual property", function() {
@@ -239,6 +301,21 @@ describe( "Object monitor", function() {
 				monitored.$context.hasChanged.should.be.false();
 			} );
 
+			it( "is using custom comparison callback on detecting change of shallow property", function() {
+				const monitored = Monitor( data, { customCompare: ( a, b ) => a === -b } );
+
+				monitored.$context.changed.should.be.empty();
+				data.someInteger = 1000;
+				monitored.$context.changed.should.be.empty();
+				monitored.$context.hasChanged.should.be.false();
+				monitored.someInteger = -1000;
+				monitored.$context.changed.should.be.empty();
+				monitored.$context.hasChanged.should.be.false();
+				monitored.someInteger = 1000;
+				monitored.$context.changed.should.not.be.empty();
+				monitored.$context.hasChanged.should.be.true();
+			} );
+
 
 			it( "is tracking any deep property added via monitored object in its monitoring context", function() {
 				const monitored = Monitor( data, { recursive: true } );
@@ -282,6 +359,21 @@ describe( "Object monitor", function() {
 				monitored.someObject.theObject = "set";
 				monitored.$context.changed.should.be.empty();
 				monitored.$context.hasChanged.should.be.false();
+			} );
+
+			it( "is using custom comparison callback on detecting change of deep property", function() {
+				const monitored = Monitor( data, { recursive: true, customCompare: ( previous, current ) => current === previous + previous } );
+
+				monitored.$context.changed.should.be.empty();
+				data.someObject.theObject = "set";
+				monitored.$context.changed.should.be.empty();
+				monitored.$context.hasChanged.should.be.false();
+				monitored.someObject.theObject = "setset";
+				monitored.$context.changed.should.be.empty();
+				monitored.$context.hasChanged.should.be.false();
+				monitored.someObject.theObject = "set";
+				monitored.$context.changed.should.not.be.empty();
+				monitored.$context.hasChanged.should.be.true();
 			} );
 
 
@@ -719,9 +811,11 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "is obeyed on containing function associated with path name of adjusted property", () => {
-					const monitored = Monitor( data, { coercion: {
-						someInteger: value => String( value ),
-					} } );
+					const monitored = Monitor( data, {
+						coercion: {
+							someInteger: value => String( value ),
+						}
+					} );
 
 					monitored.someInteger = 2000;
 
@@ -729,9 +823,11 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "is NOT obeyed on re-assigning existing value of selected property", () => {
-					const monitored = Monitor( data, { coercion: {
-						someInteger: value => String( value ),
-					} } );
+					const monitored = Monitor( data, {
+						coercion: {
+							someInteger: value => String( value ),
+						}
+					} );
 
 					monitored.someInteger = 1000;
 
@@ -739,9 +835,11 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "is NOT obeyed on missing function exactly associated with path name of adjusted property", () => {
-					const monitored = Monitor( data, { coercion: {
-						someInteger: value => String( value ),
-					} } );
+					const monitored = Monitor( data, {
+						coercion: {
+							someInteger: value => String( value ),
+						}
+					} );
 
 					monitored.someDifferentInteger = 3000;
 
@@ -749,10 +847,12 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "must provide handler with full path name of adjusted property", () => {
-					const monitored = Monitor( data, { coercion: {
-						theObject: value => "simple: " + value,
-						"someObject.theObject": value => "full path: " + value,
-					}, recursive: true } );
+					const monitored = Monitor( data, {
+						coercion: {
+							theObject: value => "simple: " + value,
+							"someObject.theObject": value => "full path: " + value,
+						}, recursive: true
+					} );
 
 					monitored.theObject = "added";
 					monitored.someObject.theObject = "updated";
@@ -762,10 +862,12 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "is NOT obeyed on adjusting deep property w/ non-recursive monitor", () => {
-					const monitored = Monitor( data, { coercion: {
-						theObject: value => "simple: " + value,
-						"someObject.theObject": value => "full path: " + value,
-					}, recursive: false } );
+					const monitored = Monitor( data, {
+						coercion: {
+							theObject: value => "simple: " + value,
+							"someObject.theObject": value => "full path: " + value,
+						}, recursive: false
+					} );
 
 					monitored.theObject = "added";
 					monitored.someObject.theObject = "updated";
@@ -775,11 +877,13 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "may use fallback handler matching last segment of adjusted property's path name, only", () => {
-					const monitored = Monitor( data, { coercion: {
-						theObject: ( value, label ) => "simple @" + label + ": " + value,
-						"someObject.theObject": ( value, label ) => "full path @" + label + ": " + value,
-						"*.theObject": ( value, label ) => "any level @" + label + ": " + value,
-					}, recursive: true } );
+					const monitored = Monitor( data, {
+						coercion: {
+							theObject: ( value, label ) => "simple @" + label + ": " + value,
+							"someObject.theObject": ( value, label ) => "full path @" + label + ": " + value,
+							"*.theObject": ( value, label ) => "any level @" + label + ": " + value,
+						}, recursive: true
+					} );
 
 					monitored.theObject = "added";
 					monitored.someObject.theObject = "updated";
@@ -795,11 +899,13 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "is NOT implicitly obeyed on assigning complex values containing properties to be coerced", () => {
-					const monitored = Monitor( data, { coercion: {
-						theObject: value => "simple: " + value,
-						"someObject.theObject": value => "full path: " + value,
-						"*.theObject": value => "any level: " + value,
-					}, recursive: true } );
+					const monitored = Monitor( data, {
+						coercion: {
+							theObject: value => "simple: " + value,
+							"someObject.theObject": value => "full path: " + value,
+							"*.theObject": value => "any level: " + value,
+						}, recursive: true
+					} );
 
 					monitored.theObject = "added";
 					monitored.someObject.theObject = "updated";
@@ -813,10 +919,12 @@ describe( "Object monitor", function() {
 				} );
 
 				it( "may contain default handler to be obeyed if no handler is matching path name of adjusted property exactly", () => {
-					const monitored = Monitor( data, { coercion: {
-						someInteger: value => String( value ),
-						"*": ( value, label ) => "fallback @" + label + ": " + value,
-					} } );
+					const monitored = Monitor( data, {
+						coercion: {
+							someInteger: value => String( value ),
+							"*": ( value, label ) => "fallback @" + label + ": " + value,
+						}
+					} );
 
 					monitored.someInteger.should.be.a.Number().and.equal( 1000 );
 
@@ -1149,6 +1257,137 @@ describe( "Object monitor", function() {
 
 			clone.$context.hasChanged.should.be.false();
 			clone.sub.prop.should.be.equal( "adjusted" );
+		} );
+	} );
+
+	describe( "includes clone function which", () => {
+		it( "clones objects recursively by default", () => {
+			const a = { name: "foo", extra: { age: 5 } };
+			const b = Monitor.createClone( a );
+
+			( a === b ).should.be.false();
+			( a.extra === b.extra ).should.be.false();
+		} );
+
+		it( "clones objects non-recursively on demand", () => {
+			const a = { name: "foo", extra: { age: 5 } };
+			const b = Monitor.createClone( a, false );
+
+			( a === b ).should.be.false();
+			( a.extra === b.extra ).should.be.true();
+		} );
+
+		it( "clones arrays recursively by default", () => {
+			const a = [ "foo", { age: 5 } ];
+			const b = Monitor.createClone( a );
+
+			( a === b ).should.be.false();
+			( a[1] === b[1] ).should.be.false();
+		} );
+
+		it( "clones arrays non-recursively on demand", () => {
+			const a = [ "foo", { age: 5 } ];
+			const b = Monitor.createClone( a, false );
+
+			( a === b ).should.be.false();
+			( a[1] === b[1] ).should.be.true();
+		} );
+
+		it( "clones instance of Date", () => {
+			const a = new Date();
+			const b = Monitor.createClone( a );
+
+			( a === b ).should.be.false();
+			( a.getTime() === b.getTime() ).should.be.true();
+
+			const c = { when: new Date() };
+			const d = Monitor.createClone( c );
+
+			( c.when === d.when ).should.be.false();
+			( c.when.getTime() === d.when.getTime() ).should.be.true();
+		} );
+
+		it( "clones instances of Map recursively by default", () => {
+			const a = new Map( [ [ "name", "foo" ], [ "extra", new Map( [[ "age", 5 ]] ) ] ] );
+			const b = Monitor.createClone( a );
+
+			( a === b ).should.be.false();
+			( a.get( "extra" ) === b.get( "extra" ) ).should.be.false();
+			( a.get( "extra" ).get( "age" ) === b.get( "extra" ).get( "age" ) ).should.be.true();
+		} );
+
+		it( "clones instances of Map non-recursively on demand", () => {
+			const a = new Map( [ [ "name", "foo" ], [ "extra", new Map( [[ "age", 5 ]] ) ] ] );
+			const b = Monitor.createClone( a, false );
+
+			( a === b ).should.be.false();
+			( a.get( "extra" ) === b.get( "extra" ) ).should.be.true();
+			( a.get( "extra" ).get( "age" ) === b.get( "extra" ).get( "age" ) ).should.be.true();
+		} );
+
+		it( "clones instances of Set recursively by default", () => {
+			const a = new Set( [new Set( [ "foo", 5 ] )] );
+			const b = Monitor.createClone( a );
+
+			( a === b ).should.be.false();
+			( [...a][0] === [...b][0] ).should.be.false();
+			( [...[...a][0]][1] === [...[...b][0]][1] ).should.be.true();
+		} );
+
+		it( "clones instances of Set non-recursively on demand", () => {
+			const a = new Set( [new Set( [ "foo", 5 ] )] );
+			const b = Monitor.createClone( a, false );
+
+			( a === b ).should.be.false();
+			( [...a][0] === [...b][0] ).should.be.true();
+			( [...[...a][0]][1] === [...[...b][0]][1] ).should.be.true();
+		} );
+
+		it( "invokes any custom clone() method per object", () => {
+			const a = { clone: () => 5 };
+			const b = Monitor.createClone( a );
+
+			( a === b ).should.be.false();
+			b.should.be.equal( 5 );
+
+			const c = { outer: { clone: () => 5 } };
+			const d = Monitor.createClone( c );
+
+			( c === d ).should.be.false();
+			( c.outer === d.outer ).should.be.false();
+			d.outer.should.be.equal( 5 );
+
+			const e = Monitor.createClone( c, false );
+
+			( c === e ).should.be.false();
+			( c.outer === e.outer ).should.be.true();
+		} );
+
+		it( "ignores injected prototype reference", () => {
+			const a = { __proto__: { bad: true } };
+			const b = Monitor.createClone( a );
+
+			( a.bad == null ).should.be.false();
+			( b.bad == null ).should.be.true();
+		} );
+
+		it( "ignores injected constructor reference", () => {
+			const a = { constructor: { bad: true } };
+			const b = Monitor.createClone( a );
+
+			( a.constructor === b.constructor ).should.be.false();
+			( b.bad == null ).should.be.true();
+
+			const c = { __proto__: { constructor: { bad: true } } };
+			const d = Monitor.createClone( c );
+
+			( c.constructor === d.constructor ).should.be.false();
+			( d.bad == null ).should.be.true();
+
+			const e = { constructor: { prototype: { bad: true } } };
+			const f = Monitor.createClone( e );
+
+			( f.bad == null ).should.be.true();
 		} );
 	} );
 } );
