@@ -5,7 +5,7 @@ A NodeJS module for monitoring change of object properties.
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ## Installation
 
